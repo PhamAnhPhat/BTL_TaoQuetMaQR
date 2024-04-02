@@ -7,7 +7,7 @@ import pandas as pd
 from datetime import datetime
 
 def login():
-    # Lấy dữ liệu từ textbox đăng nhập và mật khẩu
+
     username = entry_username.get()
     password = entry_password.get()
 
@@ -16,10 +16,10 @@ def login():
         messagebox.showerror("Lỗi", f"Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.")
         return
 
-    # Kiểm tra tên đăng nhập và mật khẩu từ cơ sở dữ liệu
+
     try:
         if check_credentials(username, password):
-            # Lấy role từ database
+
             role = get_role(username)
 
             if role == "giaoVien":
@@ -27,7 +27,7 @@ def login():
              change_teacher_page()
              label_class.pack()
              display_class_buttons_teacher(username)
-                # Hiển thị nút "Đăng xuất" và "Xuất excel"
+
 
 
             else:
@@ -99,7 +99,7 @@ def logout_teacher():
 def export_to_excel(courseID):
     try:
         current_date = datetime.now().strftime("%Y-%m-%d")
-        # Kết nối đến cơ sở dữ liệu SQLite và truy vấn dữ liệu từ các bảng
+
         conn = sqlite3.connect('sinhVien.db')
         df = pd.read_sql_query("SELECT Attendance.id, MSSV, Courses.tenMonHoc, ngayDiemDanh, status FROM Attendance, Courses WHERE courseID =? AND ngayDiemDanh = ? AND Courses.id = Attendance.courseID",  conn, params=(courseID, current_date))
 
@@ -128,7 +128,7 @@ def get_course_name(courseID):
         conn = sqlite3.connect('sinhVien.db')
         cursor = conn.cursor()
 
-        # Truy vấn tên của môn học từ cơ sở dữ liệu
+
         cursor.execute("SELECT tenMonHoc FROM Courses WHERE id = ?", (courseID,))
         row = cursor.fetchone()
 
@@ -150,7 +150,7 @@ def get_class_name_teacher(classID):
         conn = sqlite3.connect('sinhVien.db')
         cursor = conn.cursor()
 
-        # Truy vấn tên của môn học từ cơ sở dữ liệu
+
         cursor.execute("SELECT tenLop FROM Class WHERE id = ?", (classID,))
         row = cursor.fetchone()
 
@@ -175,7 +175,7 @@ def get_class_name_student(classID):
         conn = sqlite3.connect('sinhVien.db')
         cursor = conn.cursor()
 
-        # Truy vấn tên của môn học từ cơ sở dữ liệu
+
         cursor.execute("SELECT tenLop FROM Class WHERE id = ?", (classID,))
         row = cursor.fetchone()
 
@@ -192,38 +192,17 @@ def get_class_name_student(classID):
         if conn:
             conn.close()
 
-def display_class_buttons_teacher(teacherID):
-    try:
-        conn = sqlite3.connect('sinhVien.db')
-        cursor = conn.cursor()
-
-        # Truy vấn các lớp học mà giáo viên đang giảng dạy
-        cursor.execute("SELECT Class.id, tenLop FROM Courses, Class WHERE Courses.lopID = Class.id AND Courses.IDgiangVien = ? GROUP BY tenLop", (teacherID,))
-        classes = cursor.fetchall()
-
-        # Tạo nút cho mỗi lớp học
-        for class_info in classes:
-            class_id, class_name = class_info
-            button = tk.Button(root, text=class_name, command=lambda c=class_id: display_course_buttons_teacher(teacherID, c))
-            button.pack()
-
-    except sqlite3.Error as e:
-        print("Lỗi:", e)
-
-    finally:
-        if conn:
-            conn.close()
 
 
 
 
 def get_role(username):
     try:
-        # Kết nối đến cơ sở dữ liệu SQLite
+
         conn = sqlite3.connect('sinhVien.db')
         cursor = conn.cursor()
 
-        # Truy vấn role của sinh viên
+
         cursor.execute("SELECT vaiTro FROM Users WHERE MSSV=?", (username,))
         row = cursor.fetchone()
 
@@ -243,10 +222,10 @@ def reset_attendance():
     # Hiển thị hộp thoại xác nhận
     response = messagebox.askquestion("Xác nhận", "Bạn đã lưu dữ liệu của ngày hôm qua chưa?")
 
-    # Nếu người dùng xác nhận
+
     if response=="yes":
         try:
-            # Kết nối đến cơ sở dữ liệu SQLite và thực hiện cập nhật
+
             conn = sqlite3.connect('sinhVien.db')
             cursor = conn.cursor()
 
@@ -264,11 +243,11 @@ def reset_attendance():
 
 def check_credentials(username, password):
     try:
-        # Kết nối đến cơ sở dữ liệu SQLite
+
         conn = sqlite3.connect('sinhVien.db')
         cursor = conn.cursor()
 
-        # Thực hiện truy vấn để kiểm tra tên đăng nhập và mật khẩu
+
         cursor.execute("SELECT * FROM Users WHERE MSSV=? AND password=?", (username, password))
         row = cursor.fetchone()
 
@@ -308,21 +287,54 @@ def generate_qr(username,courseID):
     except sqlite3.Error as e:
         print("Lỗi", e)
         messagebox.showerror("Lỗi", f"Lỗi ")
-
-def display_course_buttons_teacher(teacher_id, lopID):
+def display_class_buttons_teacher(teacherID):
     try:
         conn = sqlite3.connect('sinhVien.db')
         cursor = conn.cursor()
 
-        # Truy vấn các môn học mà giáo viên đang giảng dạy trong một lớp cụ thể
-        cursor.execute("SELECT Courses.id, Courses.tenMonHoc FROM Courses, Attendance, Class WHERE Courses.id = Attendance.courseID AND Courses.IDgiangVien = ? AND Courses.lopID = Class.id AND Class.id=? GROUP BY Courses.tenMonHoc", (teacher_id, lopID))
+        # Truy vấn các lớp học mà giáo viên đang giảng dạy
+        cursor.execute("SELECT Class.id, tenLop FROM Courses, Class WHERE Courses.lopID = Class.id AND Courses.IDgiangVien = ? GROUP BY tenLop", (teacherID,))
+        classes = cursor.fetchall()
+
+        # Tạo nút cho mỗi lớp học
+        for class_info in classes:
+            class_id, class_name = class_info
+            button = tk.Button(root, text=class_name, command=lambda c=class_id: display_course_buttons_teacher(teacherID, c))
+            button.pack()
+
+    except sqlite3.Error as e:
+        print("Lỗi:", e)
+
+    finally:
+        if conn:
+            conn.close()
+
+# Tạo biến để lưu trữ trạng thái của các nút môn học
+course_buttons = {}
+
+def display_course_buttons_teacher(teacher_id, class_id):
+    global course_buttons
+
+    # Ẩn tất cả các nút môn học của các lớp khác
+    for buttons in course_buttons.values():
+        for button in buttons:
+            button.pack_forget()
+
+    try:
+        conn = sqlite3.connect('sinhVien.db')
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT Courses.id, Courses.tenMonHoc FROM Courses, Attendance, Class WHERE Courses.id = Attendance.courseID AND Courses.IDgiangVien = ? AND Courses.lopID = Class.id AND Class.id = ? GROUP BY Courses.tenMonHoc", (teacher_id, class_id))
         courses = cursor.fetchall()
 
-        # Tạo nút cho mỗi môn học
-        for course in courses:
-            course_id, course_name = course
+        # Tạo nút cho mỗi môn học và lưu trữ chúng
+        buttons = []
+        for course_id, course_name in courses:
             button = tk.Button(root, text=course_name, command=lambda c=course_id: export_to_excel(c), padx=25, pady=5, relief=tk.GROOVE)
             button.pack(pady=10, padx=10)
+            buttons.append(button)
+
+        course_buttons[class_id] = buttons
 
     except sqlite3.Error as e:
         print("Lỗi:", e)
@@ -338,11 +350,10 @@ def display_course_buttons(student_id):
         conn = sqlite3.connect('sinhVien.db')
         cursor = conn.cursor()
 
-        # Truy vấn các môn học mà sinh viên đang tham gia
+
         cursor.execute("SELECT Courses.id, tenMonHoc FROM Courses JOIN Attendance ON Courses.id = Attendance.courseID WHERE MSSV=? GROUP BY tenMonHoc", (student_id,))
         courses = cursor.fetchall()
 
-        # Tạo nút cho mỗi môn học
         for course in courses:
             course_id, course_name = course
             button = tk.Button(root, text=course_name, command=lambda c=course_id: generate_qr(student_id, c))
