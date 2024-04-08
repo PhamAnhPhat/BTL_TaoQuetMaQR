@@ -1,10 +1,12 @@
+import time
 from datetime import datetime
-
 import cv2
 from pyzbar.pyzbar import decode
 import sqlite3
 from PIL import ImageGrab
 import numpy as np
+print(cv2.__version__)
+
 def check_student_id(student_id):
     try:
         # Kết nối đến cơ sở dữ liệu SQLite
@@ -28,6 +30,22 @@ def check_student_id(student_id):
         # Đóng kết nối
         if conn:
             conn.close()
+
+
+def get_course_time(courseID):
+    try:
+        conn = sqlite3.connect('sinhVien.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT thoiGianDiemDanh FROM Courses WHERE id = ?", (courseID,))
+        course_time = cursor.fetchone()[0]  # Lấy thời gian điểm danh từ cơ sở dữ liệu
+        return course_time
+    except sqlite3.Error as e:
+        print("Lỗi:", e)
+        return None
+    finally:
+        if conn:
+            conn.close()
+
 
 def update_student_status(student_id,courseID):
     try:
@@ -70,6 +88,7 @@ def extract_mssv_from_qr_data(qr_data):
     # Lặp qua từng phần tử trong qr_parts để tìm và lấy ra MSSV và courseID
     mssv = None
     courseID = None
+    timeNow = None
     for part in qr_parts:
         # Nếu phần tử bắt đầu bằng "MSSV: ", lấy MSSV bằng cách loại bỏ phần "MSSV: "
         if part.startswith("MSSV: "):
@@ -77,11 +96,32 @@ def extract_mssv_from_qr_data(qr_data):
         # Nếu phần tử bắt đầu bằng "course: ", lấy courseID bằng cách loại bỏ phần "course: "
         elif part.startswith("course: "):
             courseID = part.split(": ")[1]
+        elif part.startswith("ThoiGianHienTai: "):
+            timeNow = part.split(": ")[1]
 
-    return mssv, courseID
+    return mssv, courseID,timeNow
 
 # Kết nối đến webcam
 cap = cv2.VideoCapture(0)
+def take_photo(mssv):
+    # Mở camera
+    cap = cv2.VideoCapture(0)
+
+    # Chụp ảnh
+    ret, frame = cap.read()
+    cv2.imwrite('photo_'+mssv+'.jpg', frame)
+def check_attendance_time(course_time):
+    # Chuyển đổi thời gian điểm danh từ chuỗi sang đối tượng datetime.time
+    course_attendance_time = datetime.strptime(course_time, "%H:%M").time()
+
+    # Lấy thời gian hiện tại
+    current_time = datetime.now().time()
+
+    # Kiểm tra xem thời gian hiện tại có lớn hơn thời gian điểm danh của khóa học không
+    if current_time > course_attendance_time:
+        return False
+    else:
+        return True
 
 # while True:
 #     # Đọc frame từ webcam
@@ -97,10 +137,18 @@ cap = cv2.VideoCapture(0)
 #     if qr_codes:
 #         for qr_code in qr_codes:
 #             qr_data = qr_code.data.decode('utf-8')
-#             mssv = extract_mssv_from_qr_data(qr_data)
+#             mssv, courseID = extract_mssv_from_qr_data(qr_data)
+#             print("MSSV:", mssv)
+#             print("courseID:", courseID)
 #             if check_student_id(mssv):
-#                 update_student_status(mssv)
-#                 print("True")
+#                 if check_attendance_time(get_course_time(courseID)):
+#                    time.sleep(2)
+#                    take_photo(mssv)
+#                    update_student_status(mssv, courseID)
+#                    print("True")
+#                    cap = cv2.VideoCapture(0)
+#                 else:
+#                    print("Quá thời gian điểm danh.")
 #             else:
 #                 print("False")
 #
@@ -112,6 +160,7 @@ cap = cv2.VideoCapture(0)
 # cap.release()
 # cv2.destroyAllWindows()
 
+
 while True:
     # Chụp màn hình
     screen = np.array(ImageGrab.grab(bbox=(0, 0, 800, 600)))
@@ -121,18 +170,21 @@ while True:
     qr_codes = decode(screen)
 
     # Hiển thị màn hình
-    cv2.imshow('Screen', cv2.cvtColor(screen, cv2.COLOR_BGR2RGB))
+    cv2.imshow('Ứng dụng quét mã QR', cv2.cvtColor(screen, cv2.COLOR_BGR2RGB))
 
     # Thực hiện xử lý cho mã QR nếu có
     if qr_codes:
         for qr_code in qr_codes:
             qr_data = qr_code.data.decode('utf-8')
-            mssv, courseID = extract_mssv_from_qr_data(qr_data)
+            mssv, courseID, timeNow = extract_mssv_from_qr_data(qr_data)
             print("MSSV:", mssv)
             print("courseID:", courseID)
             if check_student_id(mssv):
-                update_student_status(mssv,courseID)
-                print("True")
+                if check_attendance_time(get_course_time(courseID)):
+                    update_student_status(mssv, courseID)
+                    print("True")
+                else:
+                    print("Quá thời gian điểm danh.")
             else:
                 print("False")
 

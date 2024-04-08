@@ -1,10 +1,13 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 import qrcode
 from PIL import Image, ImageTk
 import sqlite3
 import pandas as pd
 from datetime import datetime
+import subprocess
+
+
 
 def login():
 
@@ -27,6 +30,8 @@ def login():
              change_teacher_page()
              label_class.pack()
              display_class_buttons_teacher(username)
+             label_class_table.pack();
+             display_class_buttons_table_teacher(username)
 
 
 
@@ -51,9 +56,99 @@ def student_page(username):
     btn_login.pack_forget()
 
 
+def display_class_buttons_table_teacher(teacherID):
+    try:
+        conn = sqlite3.connect('sinhVien.db')
+        cursor = conn.cursor()
+
+        # Truy vấn các lớp học mà giáo viên đang giảng dạy
+        cursor.execute("SELECT Class.id, tenLop FROM Courses, Class WHERE Courses.lopID = Class.id AND Courses.IDgiangVien = ? GROUP BY tenLop", (teacherID,))
+        classes = cursor.fetchall()
+
+        # Tạo nút cho mỗi lớp học
+        for class_info in classes:
+            class_id, class_name = class_info
+            button = tk.Button(root, text=class_name, command=lambda c=class_id: display_course_buttons_table_teacher(teacherID, c))
+            button.pack()
+
+    except sqlite3.Error as e:
+        print("Lỗi:", e)
+
+    finally:
+        if conn:
+            conn.close()
+
+# Tạo biến để lưu trữ trạng thái của các nút môn học
+course_buttons2 = {}
+
+def display_course_buttons_table_teacher(teacher_id, class_id):
+    global course_buttons2
+
+    # Ẩn tất cả các nút môn học của các lớp khác
+    for buttons in course_buttons2.values():
+        for button in buttons:
+            button.pack_forget()
+
+    try:
+        conn = sqlite3.connect('sinhVien.db')
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT Courses.id, Courses.tenMonHoc FROM Courses, Attendance, Class WHERE Courses.id = Attendance.courseID AND Courses.IDgiangVien = ? AND Courses.lopID = Class.id AND Class.id = ? GROUP BY Courses.tenMonHoc", (teacher_id, class_id))
+        courses = cursor.fetchall()
+
+        # Tạo nút cho mỗi môn học và lưu trữ chúng
+        buttons = []
+        for course_id, course_name in courses:
+            button = tk.Button(root, text="Xem Excel "+course_name, command=lambda c=course_id: display_attendance_table(c), padx=25, pady=5, relief=tk.GROOVE)
+            button.pack(pady=10, padx=10)
+            buttons.append(button)
+
+        course_buttons2[class_id] = buttons
+
+    except sqlite3.Error as e:
+        print("Lỗi:", e)
+
+    finally:
+        if conn:
+            conn.close()
+
+def display_attendance_table(courseID):
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    try:
+        conn = sqlite3.connect('sinhVien.db')
+        cursor = conn.cursor()
+
+        # Thực hiện truy vấn
+        cursor.execute("SELECT MSSV, Courses.tenMonHoc, ngayDiemDanh, status FROM Attendance, Courses WHERE courseID =? AND ngayDiemDanh = ? AND Courses.id = Attendance.courseID", (courseID, current_date))
+        attendance_data = cursor.fetchall()
+
+        # Tạo cửa sổ mới
+        window = tk.Toplevel()
+        window.title("Attendance Information")
+
+        # Tạo và hiển thị Treeview
+        tree = ttk.Treeview(window)
+        tree["columns"] = ( "MSSV", "Course", "Date", "Status")
+        tree["show"] = "headings"
+        tree.heading("MSSV", text="MSSV")
+        tree.heading("Course", text="Môn học")
+        tree.heading("Date", text="Ngày điểm danh")
+        tree.heading("Status", text="Trạng thái")
+
+        for row in attendance_data:
+            tree.insert("", "end", values=row)
+
+        tree.pack(fill="both", expand=True)
+
+    except sqlite3.Error as e:
+        print("Lỗi:", e)
+
+    finally:
+        if conn:
+            conn.close()
 def change_teacher_page():
     btn_logout.pack(pady=10)
-    btn_reset_attendances.pack(pady=10)
+
     label_khoaDay.pack()
     label_username.pack_forget()
     entry_username.pack_forget()
@@ -87,7 +182,7 @@ def logout_teacher():
      for button in root.winfo_children():
       button.pack_forget()
      btn_logout.pack_forget()
-     btn_reset_attendances.pack_forget()
+
      label_khoaDay.pack_forget()
      label_username.pack()
      entry_username.pack()
@@ -218,28 +313,7 @@ def get_role(username):
         if conn:
             conn.close()
 
-def reset_attendance():
-    # Hiển thị hộp thoại xác nhận
-    response = messagebox.askquestion("Xác nhận", "Bạn đã lưu dữ liệu của ngày hôm qua chưa?")
 
-
-    if response=="yes":
-        try:
-
-            conn = sqlite3.connect('sinhVien.db')
-            cursor = conn.cursor()
-
-            cursor.execute("UPDATE Students SET attendance=?", (0,))
-            conn.commit()
-
-            messagebox.showinfo("Thông báo", "Đã đặt lại điểm danh thành công!.")
-
-        except sqlite3.Error as e:
-            messagebox.showerror("Lỗi", f"Lỗi kết nối cơ sở dữ liệu: {e}")
-
-        finally:
-            if conn:
-                conn.close()
 
 def check_credentials(username, password):
     try:
@@ -264,6 +338,7 @@ def check_credentials(username, password):
 
 def generate_qr(username,courseID):
     current_date = datetime.now().strftime("%Y-%m-%d")
+    current_time = datetime.now().strftime("%H:%M")
     try:
             qr = qrcode.QRCode(
                 version=1,
@@ -271,7 +346,7 @@ def generate_qr(username,courseID):
                 box_size=10,
                 border=4,
             )
-            data = f"MSSV: {username}, course: {courseID}, NgayHienTai: {current_date}"
+            data = f"MSSV: {username}, course: {courseID}, NgayHienTai: {current_date}, ThoiGianHienTai:{current_time} "
             qr.add_data(data)
             qr.make(fit=True)
             # Tạo hình ảnh từ mã QR
@@ -387,6 +462,7 @@ root.title("Ứng dụng đăng nhập và tạo mã QR")
 
 # Tạo label và textbox đăng nhập và mật khẩu
 label_class = tk.Label(root, text="Các lớp đang dạy hiện tại")
+label_class_table = tk.Label(root, text="Xem danh sách trước khi xuất Excel")
 label_username = tk.Label(root, text="Tên đăng nhập:")
 label_username.pack()
 entry_username = tk.Entry(root)
@@ -402,7 +478,7 @@ btn_logout_student = tk.Button(root, text="Đăng xuất",command=logout_student
 # Tạo nút "Đăng nhập" để kiểm tra và hiển thị mã QR
 btn_login = tk.Button(root, text="Đăng nhập", command=login)
 btn_login.pack()
-btn_reset_attendances = tk.Button(root, text="Reset ngày mới ", command=reset_attendance, padx=10, pady=5, relief=tk.GROOVE)
+
 btn_login.pack()
 # Tạo label để hiển thị mã QR
 label_qr = tk.Label(root)

@@ -17,6 +17,7 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS Courses (
                     id INTEGER PRIMARY KEY,
                     tenMonHoc TEXT NOT NULL,
                     lopID INT NOT NULL,
+                    thoiGianDiemDanh TEXT NOT NULL,
                     IDgiangVien INTEGER NOT NULL,
                     FOREIGN KEY (lopID) REFERENCES Class(id)
                 )''')
@@ -53,11 +54,16 @@ cursor.execute("INSERT INTO Users (MSSV,name,password,lopID,vaiTro) VALUES (2051
 cursor.execute("INSERT INTO Users (MSSV,name,password,vaiTro) VALUES(101202303,'giaovien','123','giaoVien')")
 cursor.execute("INSERT INTO Users (MSSV,name,password,vaiTro) VALUES(001122,'giaovien2','123','giaoVien')")
 
-cursor.execute("INSERT INTO Courses (tenMonHoc,lopID,IDgiangVien) VALUES ('Mã nguồn mở',1,101202303)")
-cursor.execute("INSERT INTO Courses (tenMonHoc,lopID,IDgiangVien) VALUES ('Lập trình mobile',1,101202303)")
-cursor.execute("INSERT INTO Courses (tenMonHoc,lopID,IDgiangVien) VALUES ('Mã nguồn mở',2,001122)")
-cursor.execute("INSERT INTO Courses (tenMonHoc,lopID,IDgiangVien) VALUES ('Lập trình mobile',2,001122)")
-cursor.execute("INSERT INTO Courses (tenMonHoc,lopID,IDgiangVien) VALUES ('Lập trình Java',2,101202303)")
+cursor.execute("INSERT INTO Courses (tenMonHoc,lopID,thoiGianDiemDanh,IDgiangVien) VALUES ('Mã nguồn mở',1,'07:45',"
+               "101202303)")
+cursor.execute("INSERT INTO Courses (tenMonHoc,lopID,thoiGianDiemDanh,IDgiangVien) VALUES ('Lập trình mobile',1,"
+               "'07:45',101202303)")
+cursor.execute("INSERT INTO Courses (tenMonHoc,lopID,thoiGianDiemDanh,IDgiangVien) VALUES ('Mã nguồn mở',2,'07:45',"
+               "001122)")
+cursor.execute("INSERT INTO Courses (tenMonHoc,lopID,thoiGianDiemDanh,IDgiangVien) VALUES ('Lập trình mobile',2,"
+               "'07:45',001122)")
+cursor.execute("INSERT INTO Courses (tenMonHoc,lopID,thoiGianDiemDanh,IDgiangVien) VALUES ('Lập trình Java',2,"
+               "'10:45',101202303)")
 
 cursor.execute("INSERT INTO Attendance (MSSV,courseID,ngayDiemDanh,status) VALUES (2051050342,5,'2024-04-01',0)")
 cursor.execute("INSERT INTO Attendance (MSSV,courseID,ngayDiemDanh,status) VALUES (2051050342,1,'2024-04-01',0)")
