@@ -28,7 +28,7 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS Users (
                     password TEXT NOT NULL,
                     lopID INTEGER,
                     vaiTro TEXT NOT NULL,
-                     FOREIGN KEY (lopID) REFERENCES Class(id)
+                    FOREIGN KEY (lopID) REFERENCES Class(id)
                 )''')
 cursor.execute('''CREATE TABLE IF NOT EXISTS Attendance (
                     id INTEGER PRIMARY KEY,
